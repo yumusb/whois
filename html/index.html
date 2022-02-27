@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="">
+  <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+  <title>Whois Search</title>
+  <link href="bootstrap.min.css" rel="stylesheet">
+  <script src="domain.js"></script>
+
+  <style>
+    @media (min-width: 768px) {}
+  </style>
+</head>
+
+<body>
+
+  <div class="col-lg-8 mx-auto p-3 py-md-5">
+    <header class="d-flex align-items-center pb-3 mb-5 border-bottom">
+      <a class="d-flex align-items-center text-dark text-decoration-none">
+        <span class="fs-4">Whois Search</span>
+      </a>
+    </header>
+
+    <main>
+      <div class="raw col-md-8">
+
+        <div class="input-group mb-3">
+          <input type="text" class="form-control" placeholder="Input a domain" id="domain" onkeyup="check()">
+          <button class="btn btn-outline-secondary" type="button" onclick="query()">Whois!</button>
+        </div>
+        <div id="whois" class="padding-top:5px;padding-left:3px;">
+
+        </div>
+      </div>
+    </main>
+    <footer class="pt-5 my-5 text-muted border-top">
+      Created by the <a href="https://33.al">33.al</a> &copy; 2022
+    </footer>
+  </div>
+  <script>
+    var defaulthtml = `&nbsp;&nbsp;We support whois queries for the following list:
+          <ul>
+            <li>domain,ex: <em>zhufan.net</em></li>
+            <li>asn,ex: <em>as8888</em></li>
+            <li>ipv4,ex: <em>8.8.8.8</em></li>
+            <li>ipv6,ex: <em>2402:4e00::</em></li>
+          </ul>`;
+    function query() {
+      domain = document.getElementById("domain").value;
+      if (domain == "") {
+        alert("input domain!");
+        return;
+      }
+      try {
+        domain = new URL(domain).host;
+        document.getElementById("domain").value = domain;
+      } catch (err) {
+      }
+      domain = domain.replace(/(\u3002|\uff0c|,)/g, ".").replace(/(\.+)/g, '.').replace(/\.$/g, '').replace(/^\./g, '')
+      if (domain.indexOf(":") == -1) {
+        domain = punycode.ToASCII(domain)
+      }
+      domain = domain.replace(/[^0-9a-zA-Z\.\-\:]/g, '');
+      //console.log(domain);
+      document.getElementById("domain").value = decodeURI(punycode.ToUnicode(domain));
+      document.location.hash = decodeURI(punycode.ToUnicode(domain));
+      document.getElementById("whois").innerHTML = "Loading....";
+      var oReq = new XMLHttpRequest();
+      oReq.onreadystatechange = function () {
+        if (oReq.readyState == 4 && oReq.status == 200) {
+          document.getElementById("whois").innerHTML = oReq.responseText;
+        }
+      }
+      oReq.open("POST", "/api/");
+      oReq.setRequestHeader("Content-type", "application/x-www-form-urlencoded"),
+        oReq.send("domain=" + domain);
+    }
+    window.onload = function () {
+      if (document.location.hash != "") {
+        document.getElementById("domain").value = decodeURI(document.location.hash.replace("#", ""));
+        query();
+      }
+      if (document.getElementById("domain").value == "") {
+        document.getElementById("whois").innerHTML = defaulthtml;
+      }
+    }
+    document.onkeydown = function (event) {
+      if (event.keyCode == 13) {
+        query();
+      }
+    }
+    check = function () {
+      if (document.getElementById("domain").value == "") {
+        document.getElementById("whois").innerHTML = defaulthtml;
+      }
+    }
+    window.onhashchange = function () {
+      document.getElementById("domain").value = decodeURI(document.location.hash.replace("#", ""));
+    }
+  </script>
+</body>
+
+</html>
