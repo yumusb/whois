@@ -36,5 +36,5 @@ https://whois.ip.sy/
 
 ### thanks
 
-https://github.com/rfc1036/whois
+https://github.com/rfc1036/whois  
 https://getbootstrap.com/docs/5.1/examples/jumbotron/
