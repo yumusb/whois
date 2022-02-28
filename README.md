@@ -17,9 +17,10 @@ yumu@yumu-pc:/whois$ tree
 │   ├── index.html
 │   └── starter-template.css
 ├── main.go # main 
+├── new_gtlds_list # refer https://github.com/rfc1036/whois/blob/next/new_gtlds_list
 └── tld_serv_list # refer https://github.com/rfc1036/whois/blob/next/tld_serv_list
 
-1 directory, 10 files
+1 directory, 11 files
 ```
 
 ### config
