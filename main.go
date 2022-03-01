@@ -76,9 +76,9 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 		domain = strings.ToLower(domain)
 		whoisserver := ""
 		for _, v := range domaintlds {
-			if domain == v || "."+domain == v {
-				break
-			}
+			// if domain == v || "."+domain == v {
+			// 	break
+			// }
 			if strings.HasSuffix(domain, v) {
 				whoisserver = whoisservers[v]
 				log.Println(domain + ":" + whoisserver + ":" + ip)
