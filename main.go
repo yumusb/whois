@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/BurntSushi/toml"
+	"github.com/miekg/dns"
 	"golang.org/x/net/idna"
 )
 
@@ -27,6 +28,62 @@ type config struct {
 
 var whois_config config
 
+var nserverre = regexp.MustCompile(`nserver:\s+(.*?)\s`)
+
+func checkdomainnameserver(domain string) string {
+	returnhtml := ""
+	whoiscontent := whoisquery("ianawhois.vip.icann.org", domain)
+	if strings.Contains(whoiscontent, "0 objects") {
+		returnhtml = "May be you enter the wrong domain?\n"
+		return returnhtml
+	}
+	//fmt.Println(whoiscontent)
+	//nserverre := regexp.MustCompile(`nserver:\s+.*?\s+(.*?)\s+`)
+	nserver := nserverre.FindStringSubmatch(whoiscontent)
+	if len(nserver) == 0 {
+		return ""
+	}
+	//fmt.Println(nserver[1])
+	// log.Println(nserver)
+	// ipa, _ := net.LookupIP(string(nserver))
+	// if len(ipa) == 0 {
+	// 	returnhtml += "get nameserver failed\n"
+	// } else {
+	// r := &net.Resolver{
+	// 	PreferGo: true,
+	// 	Dial: func(ctx context.Context, network, address string) (net.Conn, error) {
+	// 		d := net.Dialer{
+	// 			Timeout: time.Millisecond * time.Duration(10000),
+	// 		}
+	// 		return d.DialContext(ctx, "tcp", nserver[1]+":53")
+	// 	},
+	// }
+	// domainnameservers, _ := r.LookupNS(context.Background(), domain)
+	myReq := new(dns.Msg)
+	myReq.SetQuestion(dns.Fqdn(domain), dns.TypeNS)
+	c := new(dns.Client)
+	c.Net = "udp"
+	nserversingle := net.JoinHostPort(nserver[1], "53")
+	// if strings.Contains(nserver[1], ":") {
+	// 	nserversingle = "[" + nserver[1] + "]"
+	// } else {
+	// 	nserversingle = nserver[1]
+	// }
+	r, _, _ := c.Exchange(myReq, nserversingle)
+	log.Println(nserversingle, domain)
+	if len(r.Ns) > 0 {
+		returnhtml += "The domain's nameserver is:\n"
+		for _, domainnameserver := range r.Ns {
+			returnhtml += domainnameserver.String() + "\n"
+		}
+	} else {
+		returnhtml += "The domain has no nameserver, check whois status.\n"
+	}
+	//}
+
+	returnhtml += "---------------------\n"
+	return returnhtml
+}
 func whoisquery(server string, domain string) string {
 	whoiscontent := ""
 	conn, err := net.Dial("tcp", server+":43")
@@ -89,11 +146,15 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 			whoisserver = "ianawhois.vip.icann.org"
 		}
 		whoiscontent := ""
+
 		globalwhoisserver := ""
 		if strings.Contains(whoisserver, ":/") {
-			returnhtml = "This domain does not provide a whois server. Please visit <a href='" + whoisserver + "'>" + whoisserver + "</a> to get more info."
+			returnhtml = checkdomainnameserver(domain)
+			returnhtml += "This domain does not provide a whois server. Please visit <a href='" + whoisserver + "'>" + whoisserver + "</a> to get more info."
+
 		} else {
 			reg, _ := regexp.Compile(`whois:.*   (.*)`)
+			ipserver, _ := regexp.Compile(`ResourceLink:(\s|\w|\.)+\n`)
 			if whoisserver == "ianawhois.vip.icann.org" {
 				for whoisserver != "" {
 					tmpwhoiscontent := whoisquery(whoisserver, domain)
@@ -104,6 +165,10 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 					}
 					if len(reg.FindAllString(tmpwhoiscontent, -1)) > 0 {
 						whoisserverxx := strings.Split(reg.FindAllString(tmpwhoiscontent, -1)[0], " ")
+						whoisserver = strings.TrimSpace(whoisserverxx[len(whoisserverxx)-1])
+						globalwhoisserver = whoisserver
+					} else if len(ipserver.FindAllString(tmpwhoiscontent, -1)) > 0 {
+						whoisserverxx := strings.Split(ipserver.FindAllString(tmpwhoiscontent, -1)[0], " ")
 						whoisserver = strings.TrimSpace(whoisserverxx[len(whoisserverxx)-1])
 						globalwhoisserver = whoisserver
 					} else {
@@ -121,11 +186,15 @@ func requestHandler(w http.ResponseWriter, r *http.Request) {
 					returnhtml = "May be you enter the wrong domain?\n"
 					log.Println(domain + " wrong domain")
 				} else {
-					returnhtml = "There is no whois server for this domain tld\n" + whoiscontent
+					returnhtml = "There is no whois server for this domain tld\n"
+					returnhtml += checkdomainnameserver(domain)
+					returnhtml += whoiscontent
+					//fmt.Println(nserverre.FindAllString(whoiscontent, -1)) //-1表示返回所有匹配的值，[ar an al]
 					log.Println(domain + " no whois server")
 				}
 			} else {
-				returnhtml = "hit from [" + globalwhoisserver + "]\n----------------------------------\n" + strings.Trim(whoiscontent, "\n")
+				returnhtml = checkdomainnameserver(domain)
+				returnhtml += "hit from [" + globalwhoisserver + "]\n----------------------------------\n" + strings.Trim(whoiscontent, "\n")
 			}
 		}
 
