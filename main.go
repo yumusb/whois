@@ -71,11 +71,36 @@ func checkdomainnameserver(domain string) string {
 	// }
 	r, _, _ := c.Exchange(myReq, nserversingle)
 	log.Println(nserversingle, domain)
+	//log.Println(r)
+	returnhtml += "Dns info:\n"
+	if len(r.Answer) > 0 {
+		for _, domainanswer := range r.Answer {
+			returnhtml += domainanswer.String() + "\n"
+		}
+	}
 	if len(r.Ns) > 0 {
-		returnhtml += "The domain's nameserver is:\n"
 		for _, domainnameserver := range r.Ns {
 			returnhtml += domainnameserver.String() + "\n"
 		}
+		for _, dnshost := range r.Extra {
+			returnhtml += dnshost.String() + "\n"
+		}
+
+		// if strings.Contains(returnhtml, "."+domain) {
+		// 	myReq = new(dns.Msg)
+		// 	myReq.SetQuestion(dns.Fqdn(domain), dns.TypeA)
+		// 	c := new(dns.Client)
+		// 	c.Net = "udp"
+		// 	nserversingle = net.JoinHostPort(nserver[1], "53")
+		// 	r, _, _ = c.Exchange(myReq, nserversingle)
+		// 	r.AuthenticatedData
+		// 	if len(r.Extra) > 0 {
+		// 		for _, dnshost := range r.Extra {
+		// 			returnhtml += dnshost.String() + "\n"
+		// 		}
+		// 	}
+
+		// }
 	} else {
 		returnhtml += "The domain has no nameserver, check whois status.\n"
 	}
